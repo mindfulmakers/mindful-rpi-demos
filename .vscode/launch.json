@@ -2,19 +2,19 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Pipecat Agent",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/pipecat-agent/bot.py",
-            "cwd": "${workspaceFolder}/pipecat-agent",
-            "justMyCode": false
-        },
-        {
             "name": "Simple Keyboard Journal",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/simple-keyboard-journal/main.py",
             "cwd": "${workspaceFolder}/simple-keyboard-journal",
+            "justMyCode": false
+        },
+        {
+            "name": "Pipecat Agent",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/pipecat-agent/bot.py",
+            "cwd": "${workspaceFolder}/pipecat-agent",
             "justMyCode": false
         }
     ]

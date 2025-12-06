@@ -1,4 +1,5 @@
 .env
+simple-keyboard-journal/entries/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
