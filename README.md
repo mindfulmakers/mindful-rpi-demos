@@ -4,7 +4,7 @@ There are two demos in this repo:
 - `simple-keyboard-journal`: Designed to play sounds and take input from a USB keyboard
 - `pipecat-agent`: Uses Pipecat to run an agent that you can interact with through voice (given you have a microphone and speaker connected via the USB ports)
 
-## Setup
+## Setup (might be already done)
 - Optional: SSH into your Raspberry Pi - if not, everything will still run on a Mac or Linux machine.
 - `cd` into the root of this repo
 - Run `python3 -m venv venv` to create a virtual environment.
@@ -13,7 +13,7 @@ There are two demos in this repo:
 - With the `venv` activated, run `pip install -r requirements.txt`.
 
 ## Running `simple-keyboard-journal`
-- 
+- Run `python3 simple-keyboard-journal/main.py` or use the launch config.  Make sure you have a keyboard connected to the Raspberry Pi.
 
 ## Running `pipecat-agent`
 - Run `python3 pipecat-agent/bot.py` or use the launch config in Cursor
