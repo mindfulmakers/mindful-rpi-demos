@@ -8,6 +8,14 @@
             "program": "${workspaceFolder}/pipecat-agent/bot.py",
             "cwd": "${workspaceFolder}/pipecat-agent",
             "justMyCode": false
+        },
+        {
+            "name": "Simple Keyboard Journal",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/simple-keyboard-journal/main.py",
+            "cwd": "${workspaceFolder}/simple-keyboard-journal",
+            "justMyCode": false
         }
     ]
 }
