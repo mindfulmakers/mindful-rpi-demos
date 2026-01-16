@@ -1,8 +1,9 @@
 # Mindful Raspberry Pi Demos
 
-There are two demos in this repo:
+There are three demos in this repo:
 - `simple-keyboard-journal`: Designed to play sounds and take input from a USB keyboard
 - `pipecat-agent`: Uses Pipecat to run an agent that you can interact with through voice (given you have a microphone and speaker connected via the USB ports)
+- `space-bar-thai-stt`: Hold space bar to record Thai speech, which is transcribed, translated to English, and spoken aloud (uses OpenAI APIs directly, no Pipecat)
 
 ## Setup 1: Connect to a Raspberry Pi via SSH
 - I recommend following the steps below in Setup 2 on your local computer first - it will all run on a Mac or Linux and you can test it on a Raspberry Pi later.
@@ -70,6 +71,13 @@ There are two demos in this repo:
 - Run `python3 pipecat-agent/bot.py` or use the launch config in Cursor
 - Always choose ALSA as the output system.
 - Choose the USB output device (you may see multiple options)
+
+## Running `space-bar-thai-stt`
+- Ensure `OPENAI_API_KEY` is set in your `.env` file
+- Run `python3 space-bar-thai-stt/main.py` or use the launch config
+- Hold the **space bar** to record Thai speech
+- Release to transcribe, translate to English, and hear the spoken translation
+- Press **ESC** to exit
 
 ## Troubleshooting
 - You may have to figure out what the sample rate is for your output speaker (or input microphone)
