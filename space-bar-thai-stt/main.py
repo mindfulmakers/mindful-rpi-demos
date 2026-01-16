@@ -5,20 +5,22 @@ Space Bar Thai STT Demo
 Hold down the space bar to record audio, which is then:
 1. Transcribed to Thai text using OpenAI Whisper
 2. Translated to English using GPT-4o-mini
-3. Spoken aloud using OpenAI TTS
+3. Spoken aloud using Cartesia TTS
 
-This demo does not use pipecat - it directly uses OpenAI APIs.
+This demo does not use pipecat - it directly uses OpenAI and Cartesia APIs.
 """
 
 import io
 import os
 import sys
 import wave
+import struct
 import threading
 import tempfile
 from pathlib import Path
 
 import pyaudio
+import requests
 from pynput import keyboard
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -40,15 +42,19 @@ FORMAT = pyaudio.paInt16
 # OpenAI settings
 WHISPER_MODEL = "whisper-1"
 TRANSLATION_MODEL = "gpt-4o-mini"
-TTS_MODEL = "tts-1"
-TTS_VOICE = "alloy"
+
+# Cartesia TTS settings
+CARTESIA_VOICE_ID = "5ee9feff-1265-424a-9d7f-8e4d431a12c7"
+CARTESIA_MODEL_ID = "sonic-2"
+CARTESIA_OUTPUT_SAMPLE_RATE = 44100
 
 
 class SpaceBarRecorder:
-    """Records audio while space bar is held, then processes with OpenAI."""
+    """Records audio while space bar is held, then processes with OpenAI and Cartesia."""
 
     def __init__(self):
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.cartesia_api_key = os.getenv("CARTESIA_API_KEY")
         self.audio = pyaudio.PyAudio()
         self.stream = None
         self.frames = []
@@ -198,7 +204,7 @@ class SpaceBarRecorder:
     def _transcribe_thai(self, audio_path: str) -> str:
         """Transcribe audio to Thai text using Whisper."""
         with open(audio_path, "rb") as audio_file:
-            transcript = self.client.audio.transcriptions.create(
+            transcript = self.openai_client.audio.transcriptions.create(
                 model=WHISPER_MODEL,
                 file=audio_file,
                 language="th",  # Thai language code
@@ -207,7 +213,7 @@ class SpaceBarRecorder:
 
     def _translate_to_english(self, thai_text: str) -> str:
         """Translate Thai text to English using GPT-4o-mini."""
-        response = self.client.chat.completions.create(
+        response = self.openai_client.chat.completions.create(
             model=TRANSLATION_MODEL,
             messages=[
                 {
@@ -225,42 +231,53 @@ class SpaceBarRecorder:
         return response.choices[0].message.content.strip()
 
     def _speak_text(self, text: str):
-        """Convert text to speech and play it using OpenAI TTS."""
-        response = self.client.audio.speech.create(
-            model=TTS_MODEL,
-            voice=TTS_VOICE,
-            input=text,
-            response_format="wav",
+        """Convert text to speech and play it using Cartesia TTS."""
+        response = requests.post(
+            "https://api.cartesia.ai/tts/bytes",
+            headers={
+                "X-API-Key": self.cartesia_api_key,
+                "Cartesia-Version": "2024-06-10",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model_id": CARTESIA_MODEL_ID,
+                "transcript": text,
+                "voice": {"mode": "id", "id": CARTESIA_VOICE_ID},
+                "output_format": {
+                    "container": "raw",
+                    "encoding": "pcm_s16le",
+                    "sample_rate": CARTESIA_OUTPUT_SAMPLE_RATE,
+                },
+            },
         )
 
-        # Get audio data
+        if response.status_code != 200:
+            logger.error(f"Cartesia TTS error: {response.status_code} - {response.text}")
+            return
+
+        # Get raw PCM audio data
         audio_data = response.content
 
         # Play the audio
-        self._play_audio(audio_data)
+        self._play_pcm_audio(audio_data)
 
-    def _play_audio(self, audio_data: bytes):
-        """Play WAV audio data through the speaker."""
-        # Read WAV data
-        wav_io = io.BytesIO(audio_data)
-        with wave.open(wav_io, 'rb') as wf:
-            output_stream = self.audio.open(
-                format=self.audio.get_format_from_width(wf.getsampwidth()),
-                channels=wf.getnchannels(),
-                rate=wf.getframerate(),
-                output=True,
-                output_device_index=self.output_device,
-            )
+    def _play_pcm_audio(self, audio_data: bytes):
+        """Play raw PCM audio data through the speaker."""
+        output_stream = self.audio.open(
+            format=pyaudio.paInt16,
+            channels=1,
+            rate=CARTESIA_OUTPUT_SAMPLE_RATE,
+            output=True,
+            output_device_index=self.output_device,
+        )
 
-            # Read and play chunks
-            chunk_size = 1024
-            data = wf.readframes(chunk_size)
-            while data:
-                output_stream.write(data)
-                data = wf.readframes(chunk_size)
+        # Play in chunks
+        chunk_size = 4096
+        for i in range(0, len(audio_data), chunk_size):
+            output_stream.write(audio_data[i:i + chunk_size])
 
-            output_stream.stop_stream()
-            output_stream.close()
+        output_stream.stop_stream()
+        output_stream.close()
 
         logger.info("Playback complete")
 
@@ -273,9 +290,14 @@ class SpaceBarRecorder:
 
 def main():
     """Main entry point."""
-    # Check for API key
+    # Check for API keys
     if not os.getenv("OPENAI_API_KEY"):
         logger.error("OPENAI_API_KEY environment variable is not set")
+        logger.error("Please set it in your .env file or environment")
+        sys.exit(1)
+
+    if not os.getenv("CARTESIA_API_KEY"):
+        logger.error("CARTESIA_API_KEY environment variable is not set")
         logger.error("Please set it in your .env file or environment")
         sys.exit(1)
 
