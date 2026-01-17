@@ -183,6 +183,8 @@ async def main(input_device: int, output_device: int, keyboard_device=None):
             audio_out_enabled=True,
             input_device_index=input_device,
             output_device_index=output_device,
+            audio_in_channels=1,  # Mono input (required for many USB mics)
+            audio_out_channels=1,  # Mono output (required for many USB speakers)
         )
     )
 
