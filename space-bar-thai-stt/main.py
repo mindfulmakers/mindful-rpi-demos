@@ -20,8 +20,13 @@ import tempfile
 from pathlib import Path
 
 import pyaudio
+
+# Hard-coded audio device indices (run select_audio_device.py to find correct values)
+INPUT_DEVICE_INDEX = 1
+OUTPUT_DEVICE_INDEX = 2
 import requests
-from pynput import keyboard
+import evdev
+from evdev import ecodes
 from openai import OpenAI
 from dotenv import load_dotenv
 from loguru import logger
@@ -46,7 +51,7 @@ TRANSLATION_MODEL = "gpt-4o-mini"
 # Cartesia TTS settings
 CARTESIA_VOICE_ID = "5ee9feff-1265-424a-9d7f-8e4d431a12c7"
 CARTESIA_MODEL_ID = "sonic-2"
-CARTESIA_OUTPUT_SAMPLE_RATE = 44100
+CARTESIA_OUTPUT_SAMPLE_RATE = 48000
 
 
 class SpaceBarRecorder:
@@ -61,40 +66,12 @@ class SpaceBarRecorder:
         self.is_recording = False
         self.recording_lock = threading.Lock()
 
-        # Select audio devices
-        self.input_device, self.output_device = self._select_audio_devices()
+        # Use hard-coded audio device indices
+        self.input_device = INPUT_DEVICE_INDEX
+        self.output_device = OUTPUT_DEVICE_INDEX
 
-    def _select_audio_devices(self) -> tuple[int | None, int | None]:
-        """List and select audio devices."""
-        logger.info("Available audio devices:")
-
-        input_device = None
-        output_device = None
-
-        for i in range(self.audio.get_device_count()):
-            device_info = self.audio.get_device_info_by_index(i)
-            name = device_info["name"]
-            max_input = device_info["maxInputChannels"]
-            max_output = device_info["maxOutputChannels"]
-
-            device_type = []
-            if max_input > 0:
-                device_type.append("input")
-            if max_output > 0:
-                device_type.append("output")
-
-            logger.info(f"  [{i}] {name} ({', '.join(device_type)})")
-
-            # Auto-select first available input/output devices
-            if input_device is None and max_input > 0:
-                input_device = i
-            if output_device is None and max_output > 0:
-                output_device = i
-
-        logger.info(f"Selected input device: {input_device}")
-        logger.info(f"Selected output device: {output_device}")
-
-        return input_device, output_device
+        logger.info(f"Using input device: {self.input_device}")
+        logger.info(f"Using output device: {self.output_device}")
 
     def start_recording(self):
         """Start recording audio."""
@@ -288,6 +265,27 @@ class SpaceBarRecorder:
         self.audio.terminate()
 
 
+def find_keyboard_device():
+    """Find the keyboard input device."""
+    devices = [evdev.InputDevice(path) for path in evdev.list_devices()]
+    
+    for device in devices:
+        capabilities = device.capabilities()
+        # Check if device has EV_KEY capability and has keyboard keys
+        if ecodes.EV_KEY in capabilities:
+            keys = capabilities[ecodes.EV_KEY]
+            # Check for typical keyboard keys (space, escape, letters)
+            if ecodes.KEY_SPACE in keys and ecodes.KEY_ESC in keys:
+                logger.info(f"Found keyboard: {device.name} ({device.path})")
+                return device
+    
+    # If no keyboard found, list available devices for debugging
+    logger.error("No keyboard device found. Available devices:")
+    for device in devices:
+        logger.error(f"  {device.path}: {device.name}")
+    return None
+
+
 def main():
     """Main entry point."""
     # Check for API keys
@@ -301,6 +299,14 @@ def main():
         logger.error("Please set it in your .env file or environment")
         sys.exit(1)
 
+    # Find keyboard device
+    keyboard_device = find_keyboard_device()
+    if not keyboard_device:
+        logger.error("Could not find keyboard. Make sure you're running with proper permissions.")
+        logger.error("Try: sudo python main.py")
+        logger.error("Or add your user to the 'input' group: sudo usermod -aG input $USER")
+        sys.exit(1)
+
     logger.info("Space Bar Thai STT Demo")
     logger.info("=" * 40)
     logger.info("Hold SPACE to record Thai speech")
@@ -311,26 +317,30 @@ def main():
     recorder = SpaceBarRecorder()
     space_pressed = False
 
-    def on_press(key):
-        nonlocal space_pressed
-        if key == keyboard.Key.space and not space_pressed:
-            space_pressed = True
-            recorder.start_recording()
-        elif key == keyboard.Key.esc:
-            logger.info("Exiting...")
-            return False  # Stop listener
-
-    def on_release(key):
-        nonlocal space_pressed
-        if key == keyboard.Key.space and space_pressed:
-            space_pressed = False
-            recorder.stop_recording()
-
-    # Start keyboard listener
-    with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
-        listener.join()
-
-    recorder.cleanup()
+    try:
+        for event in keyboard_device.read_loop():
+            if event.type == ecodes.EV_KEY:
+                key_event = evdev.categorize(event)
+                
+                # Space bar pressed
+                if key_event.scancode == ecodes.KEY_SPACE:
+                    if key_event.keystate == evdev.KeyEvent.key_down and not space_pressed:
+                        space_pressed = True
+                        recorder.start_recording()
+                    elif key_event.keystate == evdev.KeyEvent.key_up and space_pressed:
+                        space_pressed = False
+                        recorder.stop_recording()
+                
+                # ESC pressed - exit
+                elif key_event.scancode == ecodes.KEY_ESC and key_event.keystate == evdev.KeyEvent.key_down:
+                    logger.info("Exiting...")
+                    break
+    except KeyboardInterrupt:
+        logger.info("Interrupted...")
+    finally:
+        recorder.cleanup()
+        keyboard_device.close()
+    
     logger.info("Goodbye!")
 
 
