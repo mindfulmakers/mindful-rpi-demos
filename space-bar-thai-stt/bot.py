@@ -50,8 +50,8 @@ logger.remove(0)
 logger.add(sys.stderr, level="DEBUG")
 
 # Hard-coded audio device indices (run select_audio_device.py to find correct values)
-INPUT_DEVICE_INDEX = 0
-OUTPUT_DEVICE_INDEX = 1
+INPUT_DEVICE_INDEX = 1
+OUTPUT_DEVICE_INDEX = 2
 
 OUTPUT_SAMPLE_RATE = 48000
 
