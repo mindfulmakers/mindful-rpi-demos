@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.pipecat.ai)",
+      "WebFetch(domain:developers.deepgram.com)",
+      "WebSearch",
+      "WebFetch(domain:reference-server.pipecat.ai)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

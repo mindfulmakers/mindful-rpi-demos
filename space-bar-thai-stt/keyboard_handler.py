@@ -45,21 +45,32 @@ def run_macos_main(recorder):
     from pynput import keyboard
 
     space_pressed = False
+    any_key_received = False
 
     def on_press(key):
-        nonlocal space_pressed
+        nonlocal space_pressed, any_key_received
+        any_key_received = True
+        logger.debug(f"Key pressed: {key}")
         if key == keyboard.Key.space and not space_pressed:
             space_pressed = True
+            logger.info("Space pressed - starting recording")
             recorder.start_recording()
         elif key == keyboard.Key.esc:
-            logger.info("Exiting...")
+            logger.info("ESC pressed - exiting...")
             return False  # Stop listener
 
     def on_release(key):
         nonlocal space_pressed
+        logger.debug(f"Key released: {key}")
         if key == keyboard.Key.space and space_pressed:
             space_pressed = False
+            logger.info("Space released - stopping recording")
             recorder.stop_recording()
+
+    logger.info("Starting keyboard listener (pynput)...")
+    logger.info(
+        "If you don't see key events, check Accessibility permissions in System Settings"
+    )
 
     with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
         listener.join()

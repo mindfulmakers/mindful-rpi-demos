@@ -24,6 +24,14 @@
             "program": "${workspaceFolder}/space-bar-thai-stt/main.py",
             "cwd": "${workspaceFolder}/space-bar-thai-stt",
             "justMyCode": false
+        },
+        {
+            "name": "Space Bar Thai STT (Pipecat)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/space-bar-thai-stt/bot.py",
+            "cwd": "${workspaceFolder}/space-bar-thai-stt",
+            "justMyCode": false
         }
     ]
 }

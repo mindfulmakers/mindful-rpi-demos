@@ -181,13 +181,17 @@ class SpaceBarRecorder:
 
     def _transcribe_thai(self, audio_path: str) -> str:
         """Transcribe audio to Thai text using Whisper."""
-        with open(audio_path, "rb") as audio_file:
-            transcript = self.openai_client.audio.transcriptions.create(
-                model=WHISPER_MODEL,
-                file=audio_file,
-                language="th",  # Thai language code
-            )
-        return transcript.text.strip()
+        try:
+            with open(audio_path, "rb") as audio_file:
+                transcript = self.openai_client.audio.transcriptions.create(
+                    model=WHISPER_MODEL,
+                    file=audio_file,
+                    language="th",  # Thai language code
+                )
+            return transcript.text.strip()
+        except Exception as e:
+            logger.warning(f"Transcription failed: {e}")
+            return ""
 
     def _translate_to_english(self, thai_text: str) -> str:
         """Translate Thai text to English using GPT-4o-mini."""
